@@ -1,7 +1,8 @@
-fastapi
-uvicorn
-sqlalchemy
-asyncpg
-databases
-psycopg2-binary
-pydantic
+# サーバ実行環境（Ubuntu 24.04 / Python 3.12）で動作確認済みの版に固定
+fastapi==0.115.12
+uvicorn==0.33.0
+sqlalchemy==2.0.41
+psycopg2-binary==2.9.10
+pydantic==2.10.6
+pydantic-settings==2.8.1
+python-multipart==0.0.20

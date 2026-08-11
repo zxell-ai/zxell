@@ -16,10 +16,11 @@ The server lives in `zxell_server/` and uses flat imports (`import models, schem
 cd zxell_server
 pip install -r requirements.txt
 export ZXELL_DB_URL="postgresql://user:password@localhost/zxell_db"  # required, no default
+export ZXELL_ADMIN_API_KEY="..."                                     # required, no default
 uvicorn main:app --reload
 ```
 
-`ZXELL_DB_URL` must point at a PostgreSQL database; `database.py` raises a KeyError at import time if it is unset. Tables are auto-created on startup via `models.Base.metadata.create_all` (no migrations tooling).
+Settings are defined in `config.py` (pydantic-settings, `ZXELL_` prefix, optional `.env` file — see `.env.example`). Passing them as environment variables is the official procedure; never put real credentials in `config.py`. `ZXELL_DB_URL` must point at a PostgreSQL database; startup fails with a pydantic ValidationError if a required setting is unset. Tables are auto-created on startup via `models.Base.metadata.create_all` (no migrations tooling).
 
 There are currently no tests or lint configuration.
 
