@@ -263,3 +263,8 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         log("終了します")
         sys.exit(0)
+    except RuntimeError as e:
+        # リトライ上限まで粘っても届かなかった場合。トレースバックは出さない
+        log("エラー: %s" % e)
+        log("サーバ側の障害・メンテナンスの可能性があります。時間をおいて再実行してください")
+        sys.exit(1)

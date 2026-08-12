@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zxell.ai — distributed from-scratch LLM training on commodity hardware</title>
+<meta name="description" content="Training a multilingual language model from scratch on a news corpus, distributed across low-spec volunteer machines.">
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1f2e; --muted: #5a6274; --line: #e3e6ee;
+    --accent: #2456d6; --accent-soft: #eef2fc; --card: #f7f8fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1219; --fg: #e8eaf1; --muted: #9aa3b8; --line: #262c3a;
+      --accent: #6f96f5; --accent-soft: #1a2338; --card: #161b26;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.65;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+  header { padding: 88px 0 48px; border-bottom: 1px solid var(--line); }
+  .brand { font-size: 15px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.2; margin: 14px 0 18px; letter-spacing: -.01em; }
+  .lead { font-size: 18px; color: var(--muted); max-width: 640px; }
+  .cta { margin-top: 28px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 10px 22px; border-radius: 8px; text-decoration: none;
+    font-weight: 600; font-size: 15px; border: 1px solid var(--line); color: var(--fg);
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  section { padding: 48px 0 0; }
+  h2 { font-size: 22px; margin-bottom: 16px; letter-spacing: -.01em; }
+  p + p { margin-top: 12px; }
+  p, li { color: var(--fg); }
+  .muted { color: var(--muted); }
+  pre {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 20px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin-top: 16px;
+  }
+  code { font-family: ui-monospace, "Cascadia Code", Consolas, Menlo, monospace; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+  .card h3 { font-size: 15.5px; margin-bottom: 6px; }
+  .card p { font-size: 14.5px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+  .tag.done { background: var(--accent-soft); color: var(--accent); }
+  .tag.next { background: var(--card); color: var(--muted); border: 1px solid var(--line); }
+  footer { border-top: 1px solid var(--line); margin-top: 64px; padding-top: 24px; font-size: 14px; color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="brand">zxell.ai</div>
+    <h1>Training a language model from scratch — without the GPU cluster.</h1>
+    <p class="lead">
+      An experiment in low-budget, low-communication distributed training:
+      a multilingual news corpus, a from-scratch Transformer, and a swarm of
+      ordinary consumer machines coordinated over HTTPS.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/zxell-ai/zxell">View on GitHub</a>
+      <a class="btn" href="#how">How it works</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>The project</h2>
+    <p>
+      The corpus is a private archive of roughly <strong>8 million news articles</strong>
+      (title, summary, category, body) in English, German, French, and Japanese —
+      about <strong>6.5 billion tokens</strong> after deduplication. Instead of renting
+      a GPU cluster, a small central server hands out training tasks to low-spec
+      volunteer machines.
+    </p>
+    <p>
+      The deliverable is not just the model. It is <strong>quantitative insight into how far a
+      from-scratch model can get on commodity hardware</strong>: perplexity and summarization
+      quality against a single-machine baseline, scaling curves over client count, and the
+      real cost of cutting synchronization traffic by orders of magnitude.
+    </p>
+  </section>
+
+  <section id="how">
+    <h2>How it works</h2>
+    <p class="muted">Hub-and-spoke, in the spirit of volunteer computing (BOINC, Folding@home):</p>
+<pre><code>[Central server]
+  ├─ Coordinator API (FastAPI): registration &amp; approval, task leasing, result intake
+  ├─ Parameter store: versioned global weight snapshots (checksummed)
+  ├─ Shard storage: tokenized, packed training shards
+  └─ Metadata DB (PostgreSQL): clients / tasks / results / weight versions
+
+[Clients] (heterogeneous, low-spec)
+  ├─ GPU workers: GET weights + shard → train H local steps → POST compressed delta
+  └─ CPU workers: preprocessing / evaluation / verification tasks</code></pre>
+    <p>
+      Synchronous data parallelism is impossible over home connections — a 500M-parameter
+      gradient is ~1&nbsp;GB per step. Training therefore follows the
+      <strong>DiLoCo / Local&nbsp;SGD</strong> family: each client trains locally for hundreds of
+      steps and submits only a compressed weight delta; the server aggregates deltas with an
+      outer optimizer and publishes a new weight version. Tasks are leased and automatically
+      re-queued, so clients can join, leave, or fail at any time.
+    </p>
+  </section>
+
+  <section>
+    <h2>The model</h2>
+    <p>
+      A decoder-only GPT-style Transformer implemented from scratch (PyTorch as the base
+      framework, no pretrained weights): RoPE positions, RMSNorm, SwiGLU FFN, tied
+      embedding / LM head, and a custom multilingual BPE tokenizer (48k–64k vocabulary).
+    </p>
+    <div class="grid">
+      <div class="card"><h3>S — ~30M params</h3><p>6 layers · d=384 · ctx 1024. Pipeline validation and smoke tests; runs on a 2&nbsp;GB GPU.</p></div>
+      <div class="card"><h3>M — ~125M params</h3><p>12 layers · d=768 · ctx 1024. Main testbed for comparing distribution schemes.</p></div>
+      <div class="card"><h3>L — ~500M params</h3><p>24 layers · d=1280 · ctx 2048. Final target, trained on the full corpus.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Roadmap</h2>
+    <table>
+      <tr><th>Phase</th><th>Content</th><th>Status</th></tr>
+      <tr><td>0</td><td>Data inventory, legal policy, server &amp; public HTTPS endpoint</td><td><span class="tag done">done</span></td></tr>
+      <tr><td>1</td><td>Tokenizer, preprocessing pipeline, single-machine baseline</td><td><span class="tag next">in progress</span></td></tr>
+      <tr><td>2</td><td>Distributed MVP: client v1, FedAvg across machines, dashboard</td><td><span class="tag next">planned</span></td></tr>
+      <tr><td>3</td><td>Low-communication training (DiLoCo-style), verification &amp; trust</td><td><span class="tag next">planned</span></td></tr>
+      <tr><td>4</td><td>Full L-model training, summarization SFT, evaluation &amp; visualization</td><td><span class="tag next">planned</span></td></tr>
+      <tr><td>5</td><td>Public technical report; extension decisions</td><td><span class="tag next">planned</span></td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Participation &amp; data</h2>
+    <p>
+      The project currently runs <strong>closed</strong>: clients are machines operated by the
+      project itself, and the news corpus is never redistributed — only tokenized, shuffled,
+      packed shards reach approved clients. The coordination server and client code are
+      open source (<a href="https://github.com/zxell-ai/zxell">GPL-3.0 on GitHub</a>);
+      model weights and data statistics are not published at this stage.
+    </p>
+  </section>
+
+  <footer>
+    <p>zxell.ai — distributed from-scratch LLM training · <a href="https://github.com/zxell-ai/zxell">github.com/zxell-ai/zxell</a></p>
+  </footer>
+</main>
+</body>
+</html>
