@@ -1,0 +1,2 @@
+# zxell_client v1（ダミー処理版）の依存。学習実装時に torch 等を追加する
+requests>=2.31
