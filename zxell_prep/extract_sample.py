@@ -44,6 +44,7 @@ def main():
 
     conn = pymysql.connect(
         read_default_file="~/.my.cnf",
+        unix_socket="/var/run/mysqld/mysqld.sock",  # TCP は無効化されているためソケット接続
         database="sphered_production",
         charset="utf8mb4",
         cursorclass=pymysql.cursors.SSCursor,  # ストリーミング（全件をメモリに載せない）
