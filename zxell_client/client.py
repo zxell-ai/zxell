@@ -70,17 +70,27 @@ def detect_capabilities():
         "hostname": socket.gethostname(),
         "client_version": "v1-dummy",
     }
-    try:  # GPU は nvidia-smi があれば拾う（Windows / Linux 共通で動く）
-        out = subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
-            capture_output=True, text=True, timeout=10,
-        )
+    # GPU は nvidia-smi があれば拾う。古いドライバ（~46x 世代）は PATH に入らない
+    # NVSMI フォルダに置かれるため、そのフルパスも順に試す
+    candidates = ["nvidia-smi"]
+    if platform.system() == "Windows":
+        candidates.append(r"C:\Program Files\NVIDIA Corporation\NVSMI\nvidia-smi.exe")
+    for exe in candidates:
+        try:
+            out = subprocess.run(
+                [exe, "--query-gpu=name,memory.total,driver_version", "--format=csv,noheader"],
+                capture_output=True, text=True, timeout=10,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
         if out.returncode == 0 and out.stdout.strip():
-            name, mem = out.stdout.strip().splitlines()[0].split(",", 1)
-            caps["gpu"] = name.strip()
-            caps["vram"] = mem.strip()
-    except (OSError, subprocess.TimeoutExpired):
-        pass
+            fields = [f.strip() for f in out.stdout.strip().splitlines()[0].split(",")]
+            caps["gpu"] = fields[0]
+            if len(fields) > 1:
+                caps["vram"] = fields[1]
+            if len(fields) > 2:
+                caps["driver"] = fields[2]
+            break
     return caps
 
 
