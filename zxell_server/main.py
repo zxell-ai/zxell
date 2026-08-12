@@ -2,6 +2,7 @@ import json
 import secrets
 import shutil
 from datetime import timedelta
+from pathlib import Path
 from typing import List, Optional
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
@@ -319,6 +320,13 @@ def download_shard(name: str, client: models.Client = Depends(get_current_client
 
 
 # ---------- ステータス（ダッシュボード用） ----------
+
+
+@app.get("/dashboard")
+def dashboard():
+    """運用ダッシュボード v1。ページ自体は誰でも開けるが、データ（/api/status）は
+    ページ内で入力する X-Admin-Key がないと取得できない。"""
+    return FileResponse(Path(__file__).parent / "dashboard.html", media_type="text/html")
 
 
 @app.get(

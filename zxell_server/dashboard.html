@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zxell 運用ダッシュボード</title>
+<style>
+  :root { --bg:#0f1219; --fg:#e8eaf1; --muted:#9aa3b8; --line:#262c3a; --card:#161b26; --accent:#6f96f5; --ok:#3fb96b; --warn:#e0a63a; --err:#e05a5a; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.6; padding:24px; }
+  main { max-width:960px; margin:0 auto; }
+  h1 { font-size:20px; margin-bottom:4px; }
+  .sub { color:var(--muted); font-size:13px; margin-bottom:20px; }
+  .keyrow { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  input[type=password] { flex:1; min-width:240px; background:var(--card); border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:8px 12px; font-size:14px; }
+  button { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:8px 18px; font-size:14px; font-weight:600; cursor:pointer; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:16px; }
+  .card h2 { font-size:15px; margin-bottom:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th,td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .st-approved { color:var(--ok); } .st-pending { color:var(--warn); } .st-disabled { color:var(--err); }
+  .st-done { color:var(--ok); } .st-processing { color:var(--accent); } .st-failed { color:var(--err); }
+  #err { color:var(--err); margin-bottom:12px; min-height:1.2em; font-size:14px; }
+  .meta { color:var(--muted); font-size:12.5px; margin-top:8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>zxell 運用ダッシュボード v1</h1>
+  <div class="sub">/api/status を 30 秒ごとに再取得します(管理キーはこのブラウザの localStorage にのみ保存)</div>
+  <div class="keyrow">
+    <input id="key" type="password" placeholder="X-Admin-Key を入力">
+    <button onclick="saveKey()">接続</button>
+  </div>
+  <div id="err"></div>
+  <div class="card"><h2>タスク</h2><div id="tasks">—</div></div>
+  <div class="card"><h2>クライアント</h2><div id="clients">—</div></div>
+  <div class="card"><h2>最新グローバル重み</h2><div id="weight">—</div></div>
+  <div class="meta" id="updated"></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+$("key").value = localStorage.getItem("zxell_admin_key") || "";
+
+function saveKey() {
+  localStorage.setItem("zxell_admin_key", $("key").value.trim());
+  refresh();
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+
+function fmtDate(s) {
+  if (!s) return "—";
+  const d = new Date(s.endsWith("Z") || s.includes("+") ? s : s + "Z");
+  return d.toLocaleString("ja-JP");
+}
+
+async function refresh() {
+  const key = localStorage.getItem("zxell_admin_key");
+  if (!key) { $("err").textContent = "管理キーを入力してください"; return; }
+  let resp;
+  try {
+    resp = await fetch("/api/status", { headers: { "X-Admin-Key": key } });
+  } catch (e) {
+    $("err").textContent = "接続エラー: " + e; return;
+  }
+  if (!resp.ok) { $("err").textContent = "HTTP " + resp.status + "(キーが正しいか確認してください)"; return; }
+  $("err").textContent = "";
+  const data = await resp.json();
+
+  const statuses = ["pending", "processing", "done", "failed"];
+  let rows = "<table><tr><th>種別</th>" + statuses.map(s => `<th class=num>${s}</th>`).join("") + "</tr>";
+  const types = Object.keys(data.tasks);
+  if (!types.length) rows += "<tr><td colspan=5>タスクなし</td></tr>";
+  for (const t of types) {
+    rows += `<tr><td>${esc(t)}</td>` + statuses.map(s =>
+      `<td class="num st-${s}">${data.tasks[t][s] ?? ""}</td>`).join("") + "</tr>";
+  }
+  $("tasks").innerHTML = rows + "</table>";
+
+  let crows = "<table><tr><th>名前</th><th>状態</th><th>GPU</th><th>VRAM</th><th>最終アクセス</th></tr>";
+  if (!data.clients.length) crows += "<tr><td colspan=5>クライアントなし</td></tr>";
+  for (const c of data.clients) {
+    const cap = c.capabilities || {};
+    crows += `<tr><td>${esc(c.name)}</td><td class="st-${esc(c.status)}">${esc(c.status)}</td>` +
+      `<td>${esc(cap.gpu || "—")}</td><td>${esc(cap.vram || "—")}</td><td>${fmtDate(c.last_seen)}</td></tr>`;
+  }
+  $("clients").innerHTML = crows + "</table>";
+
+  const w = data.latest_weight;
+  $("weight").innerHTML = w
+    ? `v${w.version}(${esc(w.filename)}、${(w.size_bytes/1024).toFixed(1)} KB、${fmtDate(w.created_at)})` +
+      `<div class="meta">sha256: ${esc(w.checksum_sha256)}</div>`
+    : "未登録";
+  $("updated").textContent = "最終更新: " + new Date().toLocaleString("ja-JP");
+}
+
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>
