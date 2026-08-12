@@ -65,7 +65,7 @@ def main():
             SELECT i.id, LEFT(c.language, 2), i.link, i.title, i.description, i.content_text
             FROM feed_items i
             JOIN feed_channels c ON c.id = i.channel_id
-            WHERE (i.id %% 20 = 0) OR (LEFT(c.language, 2) = 'ja' AND i.id %% 4 = 0)
+            WHERE MOD(i.id, 20) = 0 OR (LEFT(c.language, 2) = 'ja' AND MOD(i.id, 4) = 0)
             """
         )
         for row_id, lang, link, title, description, content in cur:
