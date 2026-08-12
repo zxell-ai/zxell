@@ -194,3 +194,6 @@ cython_debug/
 .cursorindexingignore
 # pip installer script
 get-pip.py
+
+# zxell private planning docs (never commit)
+_private/
