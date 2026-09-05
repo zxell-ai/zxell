@@ -1,8 +1,9 @@
-# サーバ実行環境（Ubuntu 24.04 / Python 3.12）で動作確認済みの版に固定
+# サーバ実行環境（Python 3.14）で動作確認済みの版に固定
+# （旧: Ubuntu 24.04 / Python 3.12。新サーバ移行時に 3.14 対応版へ更新 — 2026-09-05）
 fastapi==0.115.12
 uvicorn==0.33.0
-sqlalchemy==2.0.41
-psycopg2-binary==2.9.10
-pydantic==2.10.6
-pydantic-settings==2.8.1
+sqlalchemy==2.0.52
+psycopg2-binary==2.9.12
+pydantic==2.13.5
+pydantic-settings==2.15.0
 python-multipart==0.0.20
