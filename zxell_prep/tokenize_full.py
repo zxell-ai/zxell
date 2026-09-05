@@ -36,9 +36,10 @@ from pathlib import Path
 
 import sentencepiece as spm
 
-SNAPSHOT = Path("/mnt/exssd/zxell/backup/feed_items/snapshot")
-SP_MODEL = Path("/mnt/exssd/zxell/work/phase1/sp_bpe_48k.model")
-SHARDS_DIR = Path("/mnt/exssd/zxell/storage/shards")
+# 2026-09-05: 新サーバ移行(旧 /ssd 喪失)に伴い、環境変数で場所を差し替え可能にした
+SNAPSHOT = Path(os.environ.get("ZXELL_SNAPSHOT", "/mnt/exssd/zxell/backup/feed_items/snapshot"))
+SP_MODEL = Path(os.environ.get("ZXELL_SP_MODEL", "/mnt/exssd/zxell/work/phase1/sp_bpe_48k.model"))
+SHARDS_DIR = Path(os.environ.get("ZXELL_SHARDS_DIR", "/mnt/exssd/zxell/storage/shards"))
 SHARD_TOKENS = 50_000_000        # 1 シャード 50M トークン(uint16 で約 100MB)
 LANGS = ("en", "de", "fr", "ja")
 SPLITS = ("train", "val", "test")
