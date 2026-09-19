@@ -7,6 +7,9 @@
 <meta name="description" content="Training a multilingual language model from scratch on a news corpus, distributed across low-spec volunteer machines.">
 <link rel="alternate" hreflang="en" href="https://zxell.ai/">
 <link rel="alternate" hreflang="ja" href="https://zxell.ai/ja/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #ffffff; --fg: #1a1f2e; --muted: #5a6274; --line: #e3e6ee;
@@ -26,8 +29,8 @@
   }
   main { max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
   header { padding: 88px 0 48px; border-bottom: 1px solid var(--line); }
-  .brand { font-size: 15px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
-  h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.2; margin: 14px 0 18px; letter-spacing: -.01em; }
+  .brand { font-family: "Orbitron", sans-serif; font-size: clamp(28px, 5vw, 44px); font-optical-sizing: auto; font-weight: normal; font-style: normal; color: var(--accent); }
+  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.4; margin: 14px 0 18px; letter-spacing: -.01em; color:dimgray; }
   .lead { font-size: 18px; color: var(--muted); max-width: 640px; }
   .cta { margin-top: 28px; display: flex; gap: 12px; flex-wrap: wrap; }
   .btn {
@@ -36,7 +39,7 @@
   }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   section { padding: 48px 0 0; }
-  h2 { font-size: 22px; margin-bottom: 16px; letter-spacing: -.01em; }
+  h2 { font-family: "Orbitron", sans-serif; font-size: 22px; margin-bottom: 16px; letter-spacing: -.01em; background-color:lavender; color:#1e1e1e; text-indent:20px; }
   p + p { margin-top: 12px; }
   p, li { color: var(--fg); }
   .muted { color: var(--muted); }
@@ -69,7 +72,7 @@
 <main>
   <header>
     <div class="lang"><span>EN</span> · <a href="/ja/" lang="ja">日本語</a></div>
-    <div class="brand">zxell.ai</div>
+    <div class="brand"><img src="zxell_trans.png" /> zxell.ai</div>
     <h1>Training a language model from scratch — without the GPU cluster.</h1>
     <p class="lead">
       An experiment in low-budget, low-communication distributed training:
