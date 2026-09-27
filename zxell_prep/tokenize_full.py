@@ -27,7 +27,6 @@ import hashlib
 import json
 import os
 import random
-import re
 import sys
 import time
 from array import array
@@ -35,6 +34,8 @@ from datetime import datetime
 from pathlib import Path
 
 import sentencepiece as spm
+
+from textprep import clean, compose_ja
 
 # 2026-09-05: 新サーバ移行(旧 /ssd 喪失)に伴い、環境変数で場所を差し替え可能にした
 SNAPSHOT = Path(os.environ.get("ZXELL_SNAPSHOT", "/mnt/exssd/zxell/backup/feed_items/snapshot"))
@@ -46,8 +47,6 @@ SPLITS = ("train", "val", "test")
 BATCH_DOCS = 512
 SEED = 20260813
 
-WS = re.compile(r"\s+")
-
 
 def drop_cache(f):
     """このファイルをページキャッシュから落とす(読み直し検証を実ディスクに当てるため)。"""
@@ -55,12 +54,6 @@ def drop_cache(f):
         os.posix_fadvise(f.fileno(), 0, 0, os.POSIX_FADV_DONTNEED)
     except (AttributeError, OSError):
         pass
-
-
-def clean(s):
-    if not s:
-        return ""
-    return WS.sub(" ", s).strip()
 
 
 def link_key(link):
@@ -125,6 +118,7 @@ def encode(work, limit=0):
     seen = set()
     n_rows = n_dup = n_empty = n_otherlang = 0
     n_retried = n_anomaly_skipped = 0
+    n_ja_dropped = {"description": 0, "title": 0}  # compose_ja が重複として省いた部位
     started = time.time()
 
     def flush(batch):
@@ -176,7 +170,9 @@ def encode(work, limit=0):
             continue
         seen.add(key)
         if lang == "ja":
-            text = " ".join(t for t in (clean(title), clean(description), clean(content)) if t)
+            text, dropped = compose_ja(title, description, content)
+            for part in dropped:
+                n_ja_dropped[part] += 1
         else:
             text = clean(content)
         if len(text) < 20:
@@ -197,6 +193,7 @@ def encode(work, limit=0):
         "rows_scanned": n_rows, "dup_links_skipped": n_dup, "empty_skipped": n_empty,
         "other_lang_skipped": n_otherlang, "eos_id": eos, "limit": limit,
         "anomaly_retried": n_retried, "anomaly_skipped": n_anomaly_skipped,
+        "ja_parts_dropped": n_ja_dropped,
         "snapshot_damage": damage,
         "elapsed_sec": round(time.time() - started),
     }

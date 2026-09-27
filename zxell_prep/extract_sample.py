@@ -27,23 +27,16 @@ snapshot_dir 省略時は環境変数 ZXELL_SNAPSHOT、それも無ければ
 import gzip
 import json
 import os
-import re
 import sys
 import time
 from pathlib import Path
+
+from textprep import clean, compose_ja
 
 DEFAULT_SNAPSHOT = "/mnt/exssd/zxell/backup/feed_items/snapshot"
 EVAL_EVERY = 50          # サンプル行のうち 50 記事に 1 件を評価用へ
 EVAL_MAX_PER_LANG = 3000
 LANGS = ("en", "de", "fr", "ja")
-
-WS = re.compile(r"\s+")
-
-
-def clean(s):
-    if not s:
-        return ""
-    return WS.sub(" ", s).strip()
 
 
 def main():
@@ -64,6 +57,7 @@ def main():
     stats = {lang: {"train_docs": 0, "train_chars": 0, "eval_docs": 0, "eval_chars": 0} for lang in LANGS}
     seen_links = set()
     n_rows = n_dup = n_empty = 0
+    n_ja_dropped = {"description": 0, "title": 0}  # compose_ja が重複として省いた部位
     started = time.time()
 
     with gzip.open(snapshot / "feed_items.jsonl.gz", "rt", encoding="utf-8") as f:
@@ -86,7 +80,9 @@ def main():
             seen_links.add(key)
 
             if lang == "ja":
-                text = " ".join(t for t in (clean(title), clean(description), clean(content)) if t)
+                text, dropped = compose_ja(title, description, content)
+                for part in dropped:
+                    n_ja_dropped[part] += 1
             else:
                 text = clean(content)
             if len(text) < 20:
@@ -106,6 +102,7 @@ def main():
         "rows_scanned_matched": n_rows,
         "dup_links_skipped": n_dup,
         "empty_skipped": n_empty,
+        "ja_parts_dropped": n_ja_dropped,
         "elapsed_sec": round(time.time() - started),
     }
     (outdir / "stats.json").write_text(json.dumps(stats, indent=2, ensure_ascii=False))
