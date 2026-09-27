@@ -18,8 +18,8 @@ train のみ記事単位でシャッフルしてからパックする(val/test �
   python tokenize_full.py <workdir> shard           # シャッフル+シャード化+メタ出力
   python tokenize_full.py <workdir> all [limit]
 limit(行数)を付けるとスモークテスト(先頭 N 行で打ち切り)。
-シャード出力先は SHARDS_DIR。分割境界は workdir/boundaries.json(必須。稼働 DB の
-pub_date 実測から 2026-08-13 に確定済みのものを使う)。
+シャード出力先は SHARDS_DIR。分割境界は workdir/boundaries.json(必須。compute_boundaries.py で
+言語別に算出した per_lang_count 形式。2026-09-27 に全言語共通の日付境界から変更 — review20)。
 """
 
 import gzip
@@ -63,8 +63,15 @@ def link_key(link):
 
 
 def load_boundaries(work):
+    """compute_boundaries.py が出す言語別境界を {lang: (val_start, test_start)} で返す。
+
+    2026-09-27(review20): 全言語共通の境界だと val/test が ja 100% になったため
+    (en/de/fr は 2023-05-28 で収集停止、ja のみ 2024-02 まで)、言語別に切る。"""
     b = json.loads((work / "boundaries.json").read_text())
-    return datetime.fromisoformat(b["val_start"]), datetime.fromisoformat(b["test_start"])
+    if b.get("mode") != "per_lang_count":
+        sys.exit("boundaries.json は compute_boundaries.py の per_lang_count 形式が必要です")
+    return {lang: (datetime.fromisoformat(v["val_start"]), datetime.fromisoformat(v["test_start"]))
+            for lang, v in b["langs"].items()}
 
 
 def iter_snapshot(limit=0, damage=None):
@@ -109,7 +116,7 @@ def encode(work, limit=0):
     assert sp.vocab_size() <= 65536, "uint16 に収まらない語彙サイズ"
     eos = sp.eos_id()
     assert eos >= 0
-    val_start, test_start = load_boundaries(work)
+    boundaries = load_boundaries(work)
 
     tok_files = {s: open(work / ("tokens_%s.u16" % s), "wb") for s in SPLITS}
     lens = {s: array("I") for s in SPLITS}
@@ -178,6 +185,7 @@ def encode(work, limit=0):
         if len(text) < 20:
             n_empty += 1
             continue
+        val_start, test_start = boundaries[lang]
         split = "test" if pub_date >= test_start else ("val" if pub_date >= val_start else "train")
         batch.append((split, lang, text))
         if len(batch) >= BATCH_DOCS:
