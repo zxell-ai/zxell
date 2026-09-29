@@ -197,3 +197,7 @@ get-pip.py
 
 # zxell private planning docs (never commit)
 _private/
+
+# zxell_model: training runs and checkpoints (never commit weights)
+zxell_model/runs/
+*.pt

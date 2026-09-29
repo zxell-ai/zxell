@@ -1,0 +1,7 @@
+# 学習環境。CUDA 機では PyTorch 公式の CUDA 付きホイールを使う:
+#   pip install --index-url https://download.pytorch.org/whl/cu128 torch
+# CPU スモーク(サーバ機):
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch
+torch>=2.9
+numpy>=2.0
+sentencepiece>=0.2.0   # sample.py(生成文の復号)のみ
