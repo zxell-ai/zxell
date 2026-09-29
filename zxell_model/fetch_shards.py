@@ -4,8 +4,10 @@ GET /api/shards/{name} は承認済みクライアントの X-API-Key が必要�
 各シャードの .bin と .json(と val/test の .langs.u8)を落として sha256 を照合する。既に正しいものは飛ばす。
 
 使い方:
-  export ZXELL_API_URL=http://192.168.1.2:8000   # LAN 内は直結(Cloudflare の 100MB 制限を避ける)
+  export ZXELL_API_URL=http://192.168.1.2      # LAN 内は nginx(:80)へ直結(Cloudflare の 100MB 制限を避ける)
+  export ZXELL_API_HOST=api.zxell.ai           # nginx の vhost 振り分け用 Host ヘッダ(IP 直打ち時に必要)
   export ZXELL_API_KEY=<クライアントの API キー>
+  (外から使うときは ZXELL_API_URL=https://api.zxell.ai、ZXELL_API_HOST は不要)
   python fetch_shards.py <保存先dir> [--only val,test] [--train-limit N]
 """
 
@@ -18,8 +20,14 @@ import urllib.request
 from pathlib import Path
 
 
+API_HOST = os.environ.get("ZXELL_API_HOST", "")
+
+
 def get(url, key, dst=None):
-    req = urllib.request.Request(url, headers={"X-API-Key": key})
+    headers = {"X-API-Key": key}
+    if API_HOST:
+        headers["Host"] = API_HOST   # uvicorn は 127.0.0.1 のみ bind。LAN からは nginx 経由で vhost 名が要る
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=600) as r:
         if dst is None:
             return r.read()

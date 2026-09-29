@@ -26,7 +26,8 @@ python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_
 ## シャード取得(API 経由)
 
 ```bash
-export ZXELL_API_URL=http://192.168.1.2:8000     # LAN 内直結
+export ZXELL_API_URL=http://192.168.1.2          # LAN 内は nginx(:80)経由
+export ZXELL_API_HOST=api.zxell.ai               # IP 直打ち時の Host ヘッダ
 export ZXELL_API_KEY=<承認済みクライアントの API キー>
 python fetch_shards.py ~/zxell-shards                 # 全部(約 12GB)
 python fetch_shards.py ~/zxell-shards --only val,test # 評価用だけ
