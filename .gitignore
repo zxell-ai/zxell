@@ -201,3 +201,7 @@ _private/
 # zxell_model: training runs and checkpoints (never commit weights)
 zxell_model/runs/
 *.pt
+
+# devlog: generated from _private/publish/ and deployed only (not tracked)
+website/devlog/
+website/tools/

@@ -4,7 +4,7 @@ GET /api/shards/{name} は承認済みクライアントの X-API-Key が必要�
 各シャードの .bin と .json(と val/test の .langs.u8)を落として sha256 を照合する。既に正しいものは飛ばす。
 
 使い方:
-  export ZXELL_API_URL=http://192.168.1.2      # LAN 内は nginx(:80)へ直結(Cloudflare の 100MB 制限を避ける)
+  export ZXELL_API_URL=http://192.168.1.2      # LAN 内は nginx(:80)へ直結(公開経路の 100MB 制限を避ける)
   export ZXELL_API_HOST=api.zxell.ai           # nginx の vhost 振り分け用 Host ヘッダ(IP 直打ち時に必要)
   export ZXELL_API_KEY=<クライアントの API キー>
   (外から使うときは ZXELL_API_URL=https://api.zxell.ai、ZXELL_API_HOST は不要)

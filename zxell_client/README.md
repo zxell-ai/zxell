@@ -49,9 +49,9 @@ python client.py
 
 ## サーバと同一 LAN 内から使う場合の注意
 
-`https://api.zxell.ai` は Cloudflare Tunnel 経由で公開しているので、LAN 内のマシンからも
-そのままつながる。ただし Cloudflare（無料プラン）のリクエストボディ上限 100MB を超える
-アップロードは通らない。その場合は Cloudflare を通さずサーバに直結する。
+`https://api.zxell.ai` は外部の公開経路を通しているので、LAN 内のマシンからも
+そのままつながる。ただし公開経路にはリクエストボディ上限 100MB があり、それを超える
+アップロードは通らない。その場合は公開経路を通さずサーバに直結する。
 
 hosts ファイルにサーバの LAN アドレスを 1 行追加し、
 
@@ -62,7 +62,7 @@ hosts ファイルにサーバの LAN アドレスを 1 行追加し、
 192.168.1.2 api.zxell.ai
 ```
 
-`--server http://api.zxell.ai` で起動する（サーバ側の nginx は HTTP のみ。TLS は Cloudflare で
+`--server http://api.zxell.ai` で起動する（サーバ側の nginx は HTTP のみ。TLS は公開経路側で
 終端しているため、直結時は `https://` ではなく `http://` を使う。LAN 内専用）。
 
 サーバマシン自身で動かす場合は `--server http://127.0.0.1:8000` を使う。
