@@ -21,7 +21,7 @@ parse_dump.py が作るバックアップスナップショット(feed_items.jso
 
 使い方: python extract_sample.py <outdir> [snapshot_dir]
 snapshot_dir 省略時は環境変数 ZXELL_SNAPSHOT、それも無ければ
-/mnt/exssd/zxell/backup/feed_items/snapshot を読む。
+~/zxell-archive/snapshot_20260905 を読む。
 """
 
 import gzip
@@ -33,7 +33,7 @@ from pathlib import Path
 
 from textprep import clean, compose_ja
 
-DEFAULT_SNAPSHOT = "/mnt/exssd/zxell/backup/feed_items/snapshot"
+DEFAULT_SNAPSHOT = os.path.expanduser("~/zxell-archive/snapshot_20260905")
 EVAL_EVERY = 50          # サンプル行のうち 50 記事に 1 件を評価用へ
 EVAL_MAX_PER_LANG = 3000
 LANGS = ("en", "de", "fr", "ja")

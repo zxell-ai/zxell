@@ -26,7 +26,7 @@ from pathlib import Path
 import sentencepiece as spm
 
 SHARDS_DIR = Path(os.environ.get("ZXELL_SHARDS_DIR", "/mnt/exssd/zxell/storage/shards"))
-SP_MODEL = Path(os.environ.get("ZXELL_SP_MODEL", "/mnt/exssd/zxell/work/phase1/sp_bpe_48k.model"))
+SP_MODEL = Path(os.environ.get("ZXELL_SP_MODEL", os.path.expanduser("~/zxell-work/phase1/sp_bpe_48k.model")))
 
 PREVIEW_CHARS = 400  # 1 記事あたりの表示文字数(それ以降は「…」で省略)
 

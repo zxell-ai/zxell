@@ -22,22 +22,34 @@
 本機はサイレント破損の履歴があるため、**大きな出力は必ず書いた直後に読み直して検証する**
 （`parse_dump.py` の `verify_output`、`tokenize_full.py` のシャード sha256 照合）。
 
-実行環境（サーバ機）: `/mnt/exssd/zxell/work/venv`（pymysql + sentencepiece）。
-作業ディレクトリ: トークナイザ比較まで `/mnt/exssd/zxell/work/phase1`、
-全量処理は `/mnt/exssd/zxell/work/phase1_full`（`boundaries.json` を置く）。
-MySQL 接続は `~/.my.cnf` を参照し、認証情報をコードに書かない。
+実行環境（サーバ機）: `zxell_prep/.venv`（Python 3.14 + sentencepiece）。
+2026-09 の新サーバ移行で稼働 MySQL は喪失したため、入力はダンプから作ったスナップショットのみ。
+旧サーバ（RAM 故障機）が作った `/mnt/exssd/zxell/work/` とスナップショットは 2026-10-02 に削除済み。
+
+| 用途 | 場所（既定値） | 環境変数 |
+|---|---|---|
+| コーパス原本 | `/mnt/exssd/zxell/backup/feed_items/sphered_tc20250330.sql.gz`（複製 `~/zxell-archive/`） | — |
+| スナップショット | `~/zxell-archive/snapshot_20260905` | `ZXELL_SNAPSHOT` |
+| トークナイザ作業 | `~/zxell-work/phase1`（`sp_bpe_48k.model` もここ） | `ZXELL_SP_MODEL` |
+| 全量処理 | `~/zxell-work/phase1_full`（`boundaries.json` を置く） | — |
+| シャード出力 | `/mnt/exssd/zxell/storage/shards` | `ZXELL_SHARDS_DIR` |
 
 ```bash
-VENV=/mnt/exssd/zxell/work/venv/bin/python
-WORK=/mnt/exssd/zxell/work/phase1
-$VENV extract_sample.py $WORK
-$VENV train_compare_tokenizers.py $WORK build
-$VENV train_compare_tokenizers.py $WORK train48
-$VENV train_compare_tokenizers.py $WORK train64
-$VENV train_compare_tokenizers.py $WORK report
+PY=.venv/bin/python
+WORK=~/zxell-work/phase1
+SNAP=~/zxell-archive/snapshot_20260905
 
-# 全量前処理（ダンプ → スナップショット → シャード）
-SNAP=/mnt/exssd/zxell/backup/feed_items/snapshot
-$VENV parse_dump.py /ssd/www/sql/sphered_tc20250330.sql.gz $SNAP
-$VENV tokenize_full.py /mnt/exssd/zxell/work/phase1_full all
+# ダンプ → スナップショット
+$PY parse_dump.py /mnt/exssd/zxell/backup/feed_items/sphered_tc20250330.sql.gz $SNAP
+
+# トークナイザ
+$PY extract_sample.py $WORK $SNAP
+$PY train_compare_tokenizers.py $WORK build
+$PY train_compare_tokenizers.py $WORK train48
+$PY train_compare_tokenizers.py $WORK train64
+$PY train_compare_tokenizers.py $WORK report
+
+# 全量前処理（境界 → エンコード → シャード）
+$PY compute_boundaries.py ~/zxell-work/phase1_full $SNAP
+$PY tokenize_full.py ~/zxell-work/phase1_full all
 ```

@@ -27,7 +27,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-DEFAULT_SNAPSHOT = "/mnt/exssd/zxell/backup/feed_items/snapshot"
+DEFAULT_SNAPSHOT = os.path.expanduser("~/zxell-archive/snapshot_20260905")
 LANGS = ("en", "de", "fr", "ja")
 TEST_DOCS = 8000   # 言語ごとの test 記事数(最新側)
 VAL_DOCS = 3000    # その直前の val 記事数
