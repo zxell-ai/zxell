@@ -49,16 +49,20 @@ python client.py
 
 ## サーバと同一 LAN 内から使う場合の注意
 
-ルーターがヘアピン NAT に対応していないため、LAN 内のマシンから
-`https://api.zxell.ai` に直接つながらないことがある。その場合は hosts ファイルに
-サーバの LAN アドレスを 1 行追加する（TLS 証明書はそのまま有効）:
+`https://api.zxell.ai` は Cloudflare Tunnel 経由で公開しているので、LAN 内のマシンからも
+そのままつながる。ただし Cloudflare（無料プラン）のリクエストボディ上限 100MB を超える
+アップロードは通らない。その場合は Cloudflare を通さずサーバに直結する。
+
+hosts ファイルにサーバの LAN アドレスを 1 行追加し、
 
 - Windows: `C:\Windows\System32\drivers\etc\hosts`（管理者権限のメモ帳で編集）
 - Linux: `/etc/hosts`
 
 ```
-192.168.10.5 api.zxell.ai
+192.168.1.2 api.zxell.ai
 ```
 
-サーバマシン自身で動かす場合は `127.0.0.1 api.zxell.ai` または
-`--server http://127.0.0.1:8000` を使う。
+`--server http://api.zxell.ai` で起動する（サーバ側の nginx は HTTP のみ。TLS は Cloudflare で
+終端しているため、直結時は `https://` ではなく `http://` を使う。LAN 内専用）。
+
+サーバマシン自身で動かす場合は `--server http://127.0.0.1:8000` を使う。

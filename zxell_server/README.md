@@ -17,7 +17,7 @@ pip install -r requirements.txt
 ```bash
 export ZXELL_DB_URL="postgresql://zxell:PASSWORD@localhost/zxell_db"
 export ZXELL_ADMIN_API_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
-# 任意: export ZXELL_STORAGE_DIR=/mnt/exssd/zxell/storage / export ZXELL_LEASE_SECONDS=3600
+# 任意: export ZXELL_STORAGE_DIR=~/zxell-storage / export ZXELL_LEASE_SECONDS=3600
 ```
 
 開発時は `.env.example` を `zxell_server/.env` にコピーして実値を書いてもよい（`.env` は gitignore 済み）。

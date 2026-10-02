@@ -12,7 +12,7 @@
   python peek_shard.py train_042 100 5      # 100 番目から 5 記事
   python peek_shard.py /path/to/val_000.bin
 
-シャード名だけを渡すと ZXELL_SHARDS_DIR(既定: /mnt/exssd/zxell/storage/shards)から
+シャード名だけを渡すと ZXELL_SHARDS_DIR(既定: ~/zxell-storage/shards)から
 探す。トークナイザは ZXELL_SP_MODEL(既定は tokenize_full.py と同じ)。
 メタ JSON(<shard>.json)があれば言語構成などの要約も添える。
 """
@@ -25,7 +25,7 @@ from pathlib import Path
 
 import sentencepiece as spm
 
-SHARDS_DIR = Path(os.environ.get("ZXELL_SHARDS_DIR", "/mnt/exssd/zxell/storage/shards"))
+SHARDS_DIR = Path(os.environ.get("ZXELL_SHARDS_DIR", os.path.expanduser("~/zxell-storage/shards")))
 SP_MODEL = Path(os.environ.get("ZXELL_SP_MODEL", os.path.expanduser("~/zxell-work/phase1/sp_bpe_48k.model")))
 
 PREVIEW_CHARS = 400  # 1 記事あたりの表示文字数(それ以降は「…」で省略)

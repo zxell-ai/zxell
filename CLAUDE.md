@@ -27,7 +27,7 @@ export ZXELL_ADMIN_API_KEY="..."                                     # required,
 
 Settings are defined in `config.py` (pydantic-settings, `ZXELL_` prefix, optional `.env` file — see `.env.example`). Other settings: `ZXELL_STORAGE_DIR` (shards/weights/artifacts directory, default `storage`), `ZXELL_LEASE_SECONDS` (task lease, default 3600). Passing them as environment variables is the official procedure; never put real credentials in `config.py`. `ZXELL_DB_URL` must point at PostgreSQL; startup fails with a pydantic ValidationError if a required setting is unset. Tables are auto-created on startup via `models.Base.metadata.create_all` (no migrations tooling).
 
-Production runs on the home server as systemd unit `zxell-server` (uvicorn on 127.0.0.1:8000, `EnvironmentFile=/etc/zxell/env`), behind nginx TLS at `https://api.zxell.ai`. `requirements.txt` is pinned for the production Python (currently 3.14).
+Production runs on the home server as systemd unit `zxell-server` (uvicorn on 127.0.0.1:8000, `EnvironmentFile=/etc/zxell/env`, `ZXELL_STORAGE_DIR` = `~/zxell-storage` of the service user, on the internal disk), behind nginx TLS at `https://api.zxell.ai`. `requirements.txt` is pinned for the production Python (currently 3.14).
 
 There are currently no tests or lint configuration.
 
@@ -52,6 +52,8 @@ The corpus source of truth is the 2025-03-30 MySQL dump `sphered_tc20250330.sql.
 2. `extract_sample.py <outdir> [snapshot_dir]` — sample corpus for tokenizer work (reads the snapshot).
 3. `train_compare_tokenizers.py <workdir> build|train48|train64|report` — SentencePiece BPE training and 48k-vs-64k comparison (48k adopted).
 4. `tokenize_full.py <workdir> encode|shard|all [limit]` — full tokenization and sharding; paths overridable via `ZXELL_SNAPSHOT`, `ZXELL_SP_MODEL`, `ZXELL_SHARDS_DIR`; requires `boundaries.json` (time-based train/val/test split) in the workdir.
+
+Data locations on the server: snapshot `~/zxell-archive/snapshot_20260905`, tokenizer/intermediates `~/zxell-work/`, shards `~/zxell-storage/shards` (these are the script defaults). The external SSD `/mnt/exssd/zxell/backup/` holds only the original dump (also copied to `~/zxell-archive/`) and an old DB dump.
 
 All long steps verify their own output (write-then-re-read hashing) — keep that pattern for new steps; it has caught real silent corruption before.
 

@@ -12,7 +12,7 @@
 - `tokenize_full.py` — 全量トークン化+シャード化（48k 採用決定後の本番前処理）。
   スナップショット走査 → 正規化・重複除去 → sp_bpe_48k エンコード → pub_date で
   train/val/test を時系列分離 → 50M トークン/シャード（uint16 .bin + メタ JSON）を
-  `/mnt/exssd/zxell/storage/shards/` に出力
+  `~/zxell-storage/shards/` に出力
 
 トークン化の読み取り元は稼働 MySQL ではなくバックアップのスナップショット。
 2026-08-13 に稼働 DB の feed_items で InnoDB ページ破損が起きたため（review14）、
@@ -32,7 +32,7 @@
 | スナップショット | `~/zxell-archive/snapshot_20260905` | `ZXELL_SNAPSHOT` |
 | トークナイザ作業 | `~/zxell-work/phase1`（`sp_bpe_48k.model` もここ） | `ZXELL_SP_MODEL` |
 | 全量処理 | `~/zxell-work/phase1_full`（`boundaries.json` を置く） | — |
-| シャード出力 | `/mnt/exssd/zxell/storage/shards` | `ZXELL_SHARDS_DIR` |
+| シャード出力 | `~/zxell-storage/shards`（サーバの `ZXELL_STORAGE_DIR` 配下） | `ZXELL_SHARDS_DIR` |
 
 ```bash
 PY=.venv/bin/python

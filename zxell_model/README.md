@@ -55,6 +55,6 @@ python sample.py runs/S_baseline/ckpt_final.pt --sp ~/sp_bpe_48k.model --prompt 
 
 ```bash
 pip install --index-url https://download.pytorch.org/whl/cpu torch
-python train.py --preset tiny --shards /mnt/exssd/zxell/storage/shards --max-train-shards 1 \
+python train.py --preset tiny --shards ~/zxell-storage/shards --max-train-shards 1 \
     --out runs/smoke --steps 50 --batch 4 --eval-every 25 --eval-tokens 20000 --warmup 5
 ```

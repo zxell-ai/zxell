@@ -40,7 +40,7 @@ from textprep import clean, compose_ja
 # 2026-09-05: 新サーバ移行(旧 /ssd 喪失)に伴い、環境変数で場所を差し替え可能にした
 SNAPSHOT = Path(os.environ.get("ZXELL_SNAPSHOT", os.path.expanduser("~/zxell-archive/snapshot_20260905")))
 SP_MODEL = Path(os.environ.get("ZXELL_SP_MODEL", os.path.expanduser("~/zxell-work/phase1/sp_bpe_48k.model")))
-SHARDS_DIR = Path(os.environ.get("ZXELL_SHARDS_DIR", "/mnt/exssd/zxell/storage/shards"))
+SHARDS_DIR = Path(os.environ.get("ZXELL_SHARDS_DIR", os.path.expanduser("~/zxell-storage/shards")))
 SHARD_TOKENS = 50_000_000        # 1 シャード 50M トークン(uint16 で約 100MB)
 LANGS = ("en", "de", "fr", "ja")
 SPLITS = ("train", "val", "test")
