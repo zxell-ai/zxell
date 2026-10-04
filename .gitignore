@@ -204,4 +204,5 @@ zxell_model/runs/
 
 # devlog: generated from _private/publish/ and deployed only (not tracked)
 website/devlog/
+website/reports/
 website/tools/
