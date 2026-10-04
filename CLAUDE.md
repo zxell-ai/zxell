@@ -27,7 +27,7 @@ export ZXELL_ADMIN_API_KEY="..."                                     # required,
 
 Settings are defined in `config.py` (pydantic-settings, `ZXELL_` prefix, optional `.env` file — see `.env.example`). Other settings: `ZXELL_STORAGE_DIR` (shards/weights/artifacts directory, default `storage`), `ZXELL_LEASE_SECONDS` (task lease, default 3600). Passing them as environment variables is the official procedure; never put real credentials in `config.py`. `ZXELL_DB_URL` must point at PostgreSQL; startup fails with a pydantic ValidationError if a required setting is unset. Tables are auto-created on startup via `models.Base.metadata.create_all` (no migrations tooling).
 
-Production runs on the home server as systemd unit `zxell-server` (uvicorn on 127.0.0.1:8000, `EnvironmentFile=/etc/zxell/env`, `ZXELL_STORAGE_DIR` = `~/zxell-storage` of the service user, on the internal disk), behind nginx (plain HTTP on port 80, `client_max_body_size 512m`). Public HTTPS for `https://zxell.ai` and `https://api.zxell.ai` is provided by an external TLS-terminating front that forwards to nginx :80 (no origin certificate). That front caps request bodies at 100MB, so LAN machines that need larger uploads talk to nginx directly over plain HTTP (see `zxell_client/README.md`). Do not name the hosting/front-end provider or other infrastructure specifics in public files (code, READMEs, devlog). `requirements.txt` is pinned for the production Python (currently 3.14).
+Production runs on the home server as systemd unit `zxell-server` (uvicorn on 127.0.0.1:8000, `EnvironmentFile=/etc/zxell/env`, `ZXELL_STORAGE_DIR` = `~/zxell-storage` of the service user, on the internal disk), behind nginx (plain HTTP on port 80, `client_max_body_size 512m`). Public HTTPS for `https://zxell.ai` and `https://api.zxell.ai` is provided by an external TLS-terminating front that forwards to nginx :80 (no origin certificate). That front caps request bodies at 100MB, so LAN machines that need larger uploads talk to nginx directly over plain HTTP (see `zxell_client/README.md`). Do not name the hosting/front-end provider or other infrastructure specifics in public files (code, READMEs, devlog); likewise keep the corpus source's table names, the dump file name, and backup-disk paths out of READMEs and docs. `requirements.txt` is pinned for the production Python (currently 3.14).
 
 There are currently no tests or lint configuration.
 
@@ -42,18 +42,21 @@ Single FastAPI app (`zxell_server/main.py`) over four tables (`models.py`):
 
 Auth (`auth.py`): every client API requires the `X-API-Key` header of an approved client (401/403 otherwise); admin APIs (client approval, task creation, weight upload, `/api/status`) require `X-Admin-Key`. `/dashboard` serves a static admin dashboard (`dashboard.html`) that calls `/api/status` with the admin key.
 
-Key endpoints: `POST /api/clients/register`, `POST /api/admin/clients/{id}/approve`, `POST /api/admin/tasks`, `GET /api/tasks/next` (leases one task, `FOR UPDATE SKIP LOCKED`), `POST /api/results`, `POST /api/admin/weights` / `GET /api/weights/latest|{version}|{version}/download`, `GET /api/shards/{name}`, `GET /api/status`.
+Key endpoints: `POST /api/clients/register`, `GET /api/clients`, `POST /api/clients/{id}/approve`, `POST /api/clients/{id}/disable`, `POST /api/tasks`, `GET /api/tasks/next` (leases one task, `FOR UPDATE SKIP LOCKED`), `POST /api/results`, `POST /api/weights` / `GET /api/weights/latest|{version}|{version}/download`, `GET /api/shards/{name}`, `GET /api/status`.
 
 ## Data preparation (`zxell_prep/`)
 
-The corpus source of truth is the 2025-03-30 MySQL dump `sphered_tc20250330.sql.gz` (the live MySQL was lost with the old server's disk in 2026-09). Pipeline order:
+The corpus source of truth is the 2025-03-30 MySQL backup dump (`.sql.gz`; the live MySQL was lost with the old server's disk in 2026-09). Pipeline order:
 
 1. `parse_dump.py <dump.sql.gz> <outdir>` — stream-parse the dump into a verified JSONL snapshot (re-reads what it wrote; fails on any corruption).
 2. `extract_sample.py <outdir> [snapshot_dir]` — sample corpus for tokenizer work (reads the snapshot).
 3. `train_compare_tokenizers.py <workdir> build|train48|train64|report` — SentencePiece BPE training and 48k-vs-64k comparison (48k adopted).
-4. `tokenize_full.py <workdir> encode|shard|all [limit]` — full tokenization and sharding; paths overridable via `ZXELL_SNAPSHOT`, `ZXELL_SP_MODEL`, `ZXELL_SHARDS_DIR`; requires `boundaries.json` (time-based train/val/test split) in the workdir.
+4. `compute_boundaries.py <workdir> [snapshot_dir]` — per-language train/val/test boundaries (newest 8,000 articles per language to test, the 3,000 before them to val) → `boundaries.json`.
+5. `tokenize_full.py <workdir> encode|shard|all [limit]` — full tokenization and sharding; paths overridable via `ZXELL_SNAPSHOT`, `ZXELL_SP_MODEL`, `ZXELL_SHARDS_DIR`; requires `boundaries.json` in the workdir.
 
-Data locations on the server: snapshot `~/zxell-archive/snapshot_20260905`, tokenizer/intermediates `~/zxell-work/`, shards `~/zxell-storage/shards` (these are the script defaults). The external SSD `/mnt/exssd/zxell/backup/` holds only the original dump (also copied to `~/zxell-archive/`) and an old DB dump.
+`textprep.py` holds the text cleanup shared by steps 2 and 5; `peek_shard.py` decodes a shard for eyeballing. Each `zxell_*` directory has an English `README.md` and a Japanese `README.ja.md` — keep the two in sync when editing either.
+
+Data locations on the server: snapshot `~/zxell-archive/snapshot_20260905`, tokenizer/intermediates `~/zxell-work/`, shards `~/zxell-storage/shards` (these are the script defaults). The original dump lives in `~/zxell-archive/` with a second copy on a separate backup disk; exact paths and file names are in the layout reports under `_private/reports/`.
 
 All long steps verify their own output (write-then-re-read hashing) — keep that pattern for new steps; it has caught real silent corruption before.
 

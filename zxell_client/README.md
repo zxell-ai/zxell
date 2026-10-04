@@ -1,13 +1,15 @@
 # zxell_client
 
-zxell 分散学習のクライアント v1（Windows / Linux 対応）。
-サーバに登録 → 管理者の承認待ち → タスク取得（リース付き）→ 処理 → 結果提出、を繰り返す。
+English | [日本語](README.ja.md)
 
-v1 の処理は**ダミー**（`train` は重みのダウンロードと checksum 検証まで行い、ダミー Δ を提出。
-その他は 1 秒待って完了報告）。分散基盤の疎通・承認フロー・リース・リトライの検証が目的で、
-実際の学習はフェーズ2 以降で実装する。
+Client v1 for zxell distributed training (Windows / Linux).
+It loops over: register with the server → wait for administrator approval → fetch a task (with a lease) → process it → submit the result.
 
-## セットアップ
+Processing in v1 is a **dummy** (`train` downloads the weights and verifies the checksum, then submits a dummy Δ;
+every other type waits one second and reports completion). The purpose is to verify the distributed
+infrastructure end to end — connectivity, the approval flow, leasing, and retries. Real training is implemented in phase 2 and later.
+
+## Setup
 
 ### Windows
 
@@ -28,41 +30,41 @@ pip install -r requirements.txt
 python client.py
 ```
 
-初回実行で登録申請され、API キーが `~/.zxell/client.json`
-（Windows は `C:\Users\<name>\.zxell\client.json`）に保存される。
-管理者が承認するまで「承認待ち」を表示してポーリングを続け、承認されると自動で稼働を開始する。
-再登録したいときはこのファイルを削除する。
+The first run sends a registration request and saves the API key to `~/.zxell/client.json`
+(`C:\Users\<name>\.zxell\client.json` on Windows).
+Until an administrator approves it, the client shows "waiting for approval" and keeps polling; once approved, it starts working automatically.
+To register again, delete this file.
 
-## オプション・環境変数
+## Options and environment variables
 
-| 引数 | 環境変数 | 既定値 | 説明 |
+| Argument | Environment variable | Default | Description |
 |---|---|---|---|
-| `--server` | `ZXELL_SERVER_URL` | `https://api.zxell.ai` | サーバ URL |
-| `--name` | `ZXELL_CLIENT_NAME` | ホスト名 | 登録名 |
-| `--types` | `ZXELL_CLIENT_TYPES` | （空 = 全種別） | 希望タスク種別。GPU 機は `train`、CPU 機は `preprocess,eval,verify` など |
-| `--state-file` | `ZXELL_STATE_FILE` | `~/.zxell/client.json` | API キーの保存先 |
-| `--poll` | `ZXELL_POLL_SECONDS` | 30 | タスク無し/承認待ち時のポーリング間隔（秒） |
-| `--once` | — | — | キューが空になったら終了（動作確認用） |
+| `--server` | `ZXELL_SERVER_URL` | `https://api.zxell.ai` | Server URL |
+| `--name` | `ZXELL_CLIENT_NAME` | hostname | Registered name |
+| `--types` | `ZXELL_CLIENT_TYPES` | (empty = all types) | Task types to request, e.g. `train` for a GPU machine, `preprocess,eval,verify` for a CPU machine |
+| `--state-file` | `ZXELL_STATE_FILE` | `~/.zxell/client.json` | Where the API key is stored |
+| `--poll` | `ZXELL_POLL_SECONDS` | 30 | Polling interval in seconds when there is no task or approval is pending |
+| `--once` | — | — | Exit when the queue is empty (for testing) |
 
-通信エラー・サーバ 5xx は指数バックオフ（最大 60 秒 × 5 回）で自動リトライする。
-回線 IP の変動による接続断（最大 70 分程度）もこのリトライで吸収する。
+Network errors and server 5xx responses are retried automatically with exponential backoff (up to 60 seconds × 5 attempts).
+Disconnections caused by a change of the line's IP address (up to about 70 minutes) are also absorbed by these retries.
 
-## サーバと同一 LAN 内から使う場合の注意
+## Notes for use on the same LAN as the server
 
-`https://api.zxell.ai` は外部の公開経路を通しているので、LAN 内のマシンからも
-そのままつながる。ただし公開経路にはリクエストボディ上限 100MB があり、それを超える
-アップロードは通らない。その場合は公開経路を通さずサーバに直結する。
+`https://api.zxell.ai` goes through an external public route, so machines on the LAN can also
+connect to it as is. However, that route limits request bodies to 100MB, and uploads larger than that
+do not go through. In that case, connect to the server directly, bypassing the public route.
 
-hosts ファイルにサーバの LAN アドレスを 1 行追加し、
+Add one line with the server's LAN address to the hosts file,
 
-- Windows: `C:\Windows\System32\drivers\etc\hosts`（管理者権限のメモ帳で編集）
+- Windows: `C:\Windows\System32\drivers\etc\hosts` (edit with Notepad run as administrator)
 - Linux: `/etc/hosts`
 
 ```
 192.168.1.2 api.zxell.ai
 ```
 
-`--server http://api.zxell.ai` で起動する（サーバ側の nginx は HTTP のみ。TLS は公開経路側で
-終端しているため、直結時は `https://` ではなく `http://` を使う。LAN 内専用）。
+and start the client with `--server http://api.zxell.ai` (nginx on the server speaks HTTP only. TLS is
+terminated on the public route, so use `http://` rather than `https://` when connecting directly. LAN only).
 
-サーバマシン自身で動かす場合は `--server http://127.0.0.1:8000` を使う。
+When running on the server machine itself, use `--server http://127.0.0.1:8000`.

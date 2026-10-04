@@ -43,7 +43,7 @@ Pretraining is next-token prediction, followed by summarization SFT using the ar
 | Phase | Content | Status |
 |---|---|---|
 | 0 | Data inventory (counts, languages, duplication, quality), legal policy, server hardening & public HTTPS endpoint | ✅ done |
-| 1 | Tokenizer training, preprocessing pipeline, single-machine S-model baseline, evaluation harness | ⏳ next |
+| 1 | Tokenizer training, preprocessing pipeline, single-machine S-model baseline, evaluation harness | ⏳ in progress |
 | 2 | Distributed MVP: client v1, FedAvg training of the S model across machines, ops dashboard | planned |
 | 3 | Low-communication training (DiLoCo-style outer optimizer, 8-bit / top-k delta compression), verification & trust scoring, scheme comparison experiments | planned |
 | 4 | Full L-model training, summarization SFT, QA evaluation, checkpoint archaeology, model-internals visualization | planned |
@@ -51,8 +51,11 @@ Pretraining is next-token prediction, followed by summarization SFT using the ar
 
 ## Repository layout
 
-- `zxell_server/` — the coordination server (FastAPI + SQLAlchemy + PostgreSQL). Implemented and running. See [`zxell_server/README.md`](zxell_server/README.md) for setup, configuration, and the full API reference (in Japanese).
-- `zxell_client/` — the training/preprocessing client (planned).
+- `zxell_server/` — the coordination server (FastAPI + SQLAlchemy + PostgreSQL). Implemented and running. See [`zxell_server/README.md`](zxell_server/README.md) for setup, configuration, and the full API reference ([日本語](zxell_server/README.ja.md)).
+- `zxell_client/` — client v1 (Windows / Linux): register → wait for approval → lease a task → process → submit. Task processing is still a dummy loop that exercises the full protocol; real training lands in phase 2. See [`zxell_client/README.md`](zxell_client/README.md) ([日本語](zxell_client/README.ja.md)).
+- `zxell_prep/` — phase-1 data preparation: verified snapshot, tokenizer training and comparison, per-language split boundaries, full tokenization and sharding. See [`zxell_prep/README.md`](zxell_prep/README.md) ([日本語](zxell_prep/README.ja.md)).
+- `zxell_model/` — the from-scratch GPT-style model with its training, evaluation, and generation code. See [`zxell_model/README.md`](zxell_model/README.md) ([日本語](zxell_model/README.ja.md)).
+- `website/` — the landing pages for https://zxell.ai (English and Japanese).
 
 ## Running the server
 
