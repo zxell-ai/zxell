@@ -70,24 +70,37 @@ def token_langs(shard_path, tokens):
 
 
 class EvalShard:
+    """評価シャードを ctx+1 の窓に切って流す。max_tokens で制限するときは先頭からではなく
+    **シャード全体から等間隔に窓を選ぶ**(val は走査順で同じチャンネルの記事が固まっているため、
+    先頭だけだと 1 言語しか見えない — 2026-10-06 の S 動作確認で判明)。"""
+
     def __init__(self, shard_path, ctx, max_tokens=0):
         self.path = Path(shard_path)
         self.ctx = ctx
+        L = ctx + 1
         d = load_shard(self.path)
-        n = len(d) if not max_tokens else min(len(d), max_tokens)
-        n = (n // (ctx + 1)) * (ctx + 1)          # ctx+1 の窓に切り揃える
+        n = (len(d) // L) * L                       # ctx+1 の窓に切り揃える
         self.tokens = np.asarray(d[:n])
         self.langs = token_langs(self.path, self.tokens)  # None なら言語別は出せない
-        self.n_windows = n // (ctx + 1)
+        total_windows = n // L
+        if max_tokens and max_tokens < n:
+            k = max(1, max_tokens // L)
+            self.window_ids = np.linspace(0, total_windows - 1, num=k, dtype=np.int64)
+        else:
+            self.window_ids = np.arange(total_windows)
+        self.n_windows = len(self.window_ids)
+
+    def _rows(self, arr, ids):
+        L = self.ctx + 1
+        return np.stack([arr[i * L:(i + 1) * L] for i in ids]).astype(np.int64)
 
     def windows(self, batch_size, device):
-        L = self.ctx + 1
         for s in range(0, self.n_windows, batch_size):
-            e = min(s + batch_size, self.n_windows)
-            chunk = torch.from_numpy(self.tokens[s * L:e * L].astype(np.int64)).view(e - s, L)
+            ids = self.window_ids[s:s + batch_size]
+            chunk = torch.from_numpy(self._rows(self.tokens, ids))
             lang = None
             if self.langs is not None:
-                lang = torch.from_numpy(self.langs[s * L:e * L].astype(np.int64)).view(e - s, L)[:, 1:]
+                lang = torch.from_numpy(self._rows(self.langs, ids))[:, 1:]
             yield chunk[:, :-1].to(device), chunk[:, 1:].to(device), (lang.to(device) if lang is not None else None)
 
 
