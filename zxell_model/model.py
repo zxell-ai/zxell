@@ -11,8 +11,14 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
 
 from config import ModelConfig
+
+# 損失計算を一度に流すシーケンス数。logits(T × 48k 語彙)が bf16 でも 1 本 98MB・fp32 で 197MB あり、
+# batch 32 を一括にすると 6GB 超(RTX 3060 で OOM — 2026-10-06)。LM Head + 損失をこの単位で分割し、
+# 逆伝播時に再計算(checkpoint)することで、保持する logits をチャンク 1 個分に抑える。
+LOSS_CHUNK_SEQS = 4
 
 
 class RMSNorm(nn.Module):
@@ -136,11 +142,17 @@ class GPT(nn.Module):
         for blk in self.blocks:
             x = blk(x, cos, sin)
         x = self.norm_f(x)
+        if targets is None:
+            return self.lm_head(x), None
+        # 学習時: logits 全体は返さず(メモリ節約)、チャンクごとに LM Head → 損失を計算する
+        total = x.new_zeros((), dtype=torch.float32)
+        for xs, ts in zip(x.split(LOSS_CHUNK_SEQS, dim=0), targets.split(LOSS_CHUNK_SEQS, dim=0)):
+            total = total + checkpoint(self._chunk_loss, xs, ts, use_reentrant=False)
+        return None, total / targets.numel()
+
+    def _chunk_loss(self, x, targets):
         logits = self.lm_head(x)
-        loss = None
-        if targets is not None:
-            loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)).float(), targets.reshape(-1))
-        return logits, loss
+        return F.cross_entropy(logits.reshape(-1, logits.size(-1)).float(), targets.reshape(-1), reduction="sum")
 
     @torch.no_grad()
     def generate(self, idx, max_new_tokens, temperature=1.0, top_p=1.0, eos_id=None):
