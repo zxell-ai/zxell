@@ -11,6 +11,20 @@ WS = re.compile(r"\s+")
 _TAIL = re.compile(r"[\s…\.。・]+$")   # 末尾の省略記号・句点(要約の「…」切り詰め対策)
 # HTML 残骸(review20 7 章: 本文の 0.005% にタグ、en の 0.28% にエンティティが生で残る)
 _TAG = re.compile(r"<(?:/?[A-Za-z][^<>]{0,200}|!--.*?--)>", re.S)
+# 収集側の不具合で本文に混入した構造体ダンプ(Ruby ハッシュ表記 {"key"=>"value", ...})。
+# 2026-10-09 に判明: ある en チャンネルの記事で、見出しの直後に画像メタデータのダンプが
+# 本文欄の上限(65,535 字)まで続き、記事本文そのものは失われている。1 記事 4 万トークンで
+# 内容が極端に反復的なため、train トークンの約 9% を占め、言語モデルの評価(en の val PPL)を
+# 大きく歪めていた(review25)。最初の構造体の開始位置から後ろを切り落とす。
+_RUBY_HASH_START = re.compile(r'\{\s*"[^"\n]{0,80}"\s*=>')
+
+
+def strip_dump(s):
+    """本文中に Ruby ハッシュ表記のダンプが始まる位置があれば、そこから後ろを捨てる。"""
+    m = _RUBY_HASH_START.search(s)
+    if not m:
+        return s
+    return s[: m.start()]
 
 
 def clean(s):
@@ -19,6 +33,8 @@ def clean(s):
     (逆だと &lt;p&gt; のような「タグに見える文字列」を誤って消す)。"""
     if not s:
         return ""
+    if "=>" in s:
+        s = strip_dump(s)
     if "<" in s:
         s = _TAG.sub(" ", s)
     if "&" in s:
