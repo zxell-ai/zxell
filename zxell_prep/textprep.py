@@ -17,14 +17,21 @@ _TAG = re.compile(r"<(?:/?[A-Za-z][^<>]{0,200}|!--.*?--)>", re.S)
 # 内容が極端に反復的なため、train トークンの約 9% を占め、言語モデルの評価(en の val PPL)を
 # 大きく歪めていた(review25)。最初の構造体の開始位置から後ろを切り落とす。
 _RUBY_HASH_START = re.compile(r'\{\s*"[^"\n]{0,80}"\s*=>')
+# 同じ不具合の別形: HTML 構文木のダンプ({"type"=>"html", "tag"=>"p", "content"=>[{"type"=>"text",
+# "content"=>"本文…"}]})。こちらは本文テキストが "type"=>"text" ノードの中に残っているので拾い上げる。
+# (2026-10-09 時点の v3 シャードにはこの救済は入っていない — review25)
+_TEXT_NODE = re.compile(r'"type"\s*=>\s*"text"\s*,\s*"content"\s*=>\s*"((?:[^"\\]|\\.)*)"')
 
 
 def strip_dump(s):
-    """本文中に Ruby ハッシュ表記のダンプが始まる位置があれば、そこから後ろを捨てる。"""
+    """本文中に Ruby ハッシュ表記のダンプが始まる位置があれば、そこから後ろを捨てる。
+    ダンプが HTML 構文木なら、中の本文テキストノードだけを取り出して後ろに繋ぐ。"""
     m = _RUBY_HASH_START.search(s)
     if not m:
         return s
-    return s[: m.start()]
+    head, dump = s[: m.start()], s[m.start():]
+    texts = [t.replace('\\"', '"').replace("\\\\", "\\") for t in _TEXT_NODE.findall(dump)]
+    return head + (" " + " ".join(texts) if texts else "")
 
 
 def clean(s):
