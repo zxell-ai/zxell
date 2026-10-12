@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zxell next-token explorer</title>
+<style>
+  :root { --bg:#ffffff; --fg:#1a1f2e; --muted:#5a6274; --line:#e3e6ee; --accent:#2456d6; --card:#f7f8fb; --edge:#9aa3b8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1219; --fg:#e8eaf1; --muted:#9aa3b8; --line:#262c3a; --accent:#6f96f5; --card:#161b26; --edge:#5a6274; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header .brand { font-weight:700; letter-spacing:.06em; color:var(--accent); }
+  header input[type=text] { flex:1; min-width:260px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); font-size:15px; }
+  header label { color:var(--muted); font-size:13px; display:flex; align-items:center; gap:6px; }
+  header input[type=number] { width:56px; padding:6px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); }
+  header button { padding:8px 16px; border-radius:8px; border:1px solid var(--accent); background:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
+  #status { color:var(--muted); font-size:13px; padding:6px 20px; }
+  #tree { width:100%; overflow:auto; }
+  svg { display:block; }
+  .link { fill:none; stroke:var(--edge); stroke-opacity:.55; }
+  .node circle { stroke:var(--bg); stroke-width:2px; cursor:pointer; }
+  .node text { font-size:13px; fill:var(--fg); }
+  .node text.p { fill:var(--muted); font-size:11px; }
+  .node.leaf-open circle { fill:var(--accent); }
+  .hint { color:var(--muted); font-size:12.5px; padding:0 20px 10px; }
+  .legend { display:flex; gap:16px; padding:0 20px 8px; color:var(--muted); font-size:12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">zxell · next-token explorer</span>
+  <input id="prompt" type="text" value="The central bank" placeholder="出だし(任意の言語)">
+  <label>候補数 k <input id="k" type="number" min="1" max="30" value="8"></label>
+  <button id="go">探索</button>
+</header>
+<div id="status">読み込み中…</div>
+<div class="legend">
+  <span>● の大きさ・枝の太さ = 確率</span><span>ノードの ⌀ 値 = その位置での迷い度(エントロピーの指数 = 実効的な選択肢数)</span>
+  <span>クリックで展開 / もう一度クリックで閉じる</span>
+</div>
+<div id="tree"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(function () {
+  const api = (path) => fetch(path).then(r => r.json());
+  const status = document.getElementById("status");
+  let root = null, promptIds = [];
+
+  async function start() {
+    const text = document.getElementById("prompt").value;
+    status.textContent = "トークン化中…";
+    const enc = await api("/api/encode?text=" + encodeURIComponent(text));
+    promptIds = enc.ids;
+    root = { name: text || "<s>", ids: enc.ids, p: 1, depth: 0, children: null, expanded: false };
+    await expand(root);
+    render();
+  }
+
+  async function expand(node) {
+    const k = document.getElementById("k").value;
+    status.textContent = "推論中…";
+    const r = await api("/api/next?ids=" + node.ids.join(",") + "&k=" + k);
+    node.entropy = r.entropy; node.eff = r.perplexity_here; node.mass = r.top_p_mass;
+    node.children = r.candidates.map(c => ({ name: c.text === " " ? "␣" : c.text, piece: c.piece, id: c.id, p: c.p,
+                                            ids: node.ids.concat([c.id]), depth: node.depth + 1, children: null, expanded: false,
+                                            eos: c.piece === "</s>" }));
+    node.expanded = true;
+    status.textContent = `「${pathText(node)}」の次: 上位 ${k} 候補で確率質量 ${(r.top_p_mass * 100).toFixed(1)}%、迷い度 ⌀ ${r.perplexity_here.toFixed(1)}`;
+  }
+
+  function pathText(node) {
+    // ルートからの文字列(プロンプト + 選んだトークン列)
+    const parts = []; let n = node;
+    while (n) { parts.unshift(n.depth === 0 ? n.name : n.name); n = n.parent; }
+    return parts.join("");
+  }
+
+  function render() {
+    const container = document.getElementById("tree");
+    container.innerHTML = "";
+    const hierarchy = d3.hierarchy(root, d => (d.expanded ? d.children : null));
+    hierarchy.each(d => { d.data.parent = d.parent ? d.parent.data : null; });
+    const leaves = hierarchy.leaves().length;
+    const depth = hierarchy.height;
+    const width = Math.max(900, 260 * (depth + 1) + 200), height = Math.max(420, leaves * 26 + 60);
+    const layout = d3.tree().size([height - 40, width - 320]);
+    layout(hierarchy);
+    const svg = d3.select(container).append("svg").attr("width", width).attr("height", height);
+    const g = svg.append("g").attr("transform", "translate(140,20)");
+    g.selectAll("path.link").data(hierarchy.links()).join("path").attr("class", "link")
+      .attr("stroke-width", d => 1 + 14 * d.target.data.p)
+      .attr("d", d3.linkHorizontal().x(d => d.y).y(d => d.x));
+    const node = g.selectAll("g.node").data(hierarchy.descendants()).join("g")
+      .attr("class", d => "node" + (d.data.expanded ? " leaf-open" : ""))
+      .attr("transform", d => `translate(${d.y},${d.x})`);
+    node.append("circle").attr("r", d => d.depth === 0 ? 7 : 3 + 10 * Math.sqrt(d.data.p))
+      .attr("fill", d => d.data.eos ? "#e34948" : (d.data.expanded ? "var(--accent)" : "#9aa3b8"))
+      .on("click", async (ev, d) => {
+        if (d.data.eos) return;
+        if (d.data.expanded) { d.data.expanded = false; render(); return; }
+        if (!d.data.children) await expand(d.data); else { d.data.expanded = true; }
+        render();
+      });
+    node.append("text").attr("dy", "-0.55em").attr("x", 10)
+      .text(d => d.depth === 0 ? d.data.name : d.data.name.replace(/^ /, "␣"));
+    node.append("text").attr("class", "p").attr("dy", "0.95em").attr("x", 10)
+      .text(d => (d.depth === 0 ? "" : (d.data.p * 100).toFixed(1) + "%") + (d.data.expanded ? `  ⌀ ${d.data.eff.toFixed(1)}` : ""));
+  }
+
+  document.getElementById("go").addEventListener("click", start);
+  document.getElementById("prompt").addEventListener("keydown", e => { if (e.key === "Enter") start(); });
+  api("/api/info").then(i => { status.textContent = `checkpoint step ${i.step} / ${i.device}。出だしを入れて「探索」`; }).catch(() => { status.textContent = "サーバに接続できません"; });
+})();
+</script>
+</body>
+</html>
