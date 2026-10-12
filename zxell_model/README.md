@@ -14,6 +14,7 @@ It is used in phase 1 (the single-machine baseline), and from phase 2 on the sam
 | `eval.py` | Per-language PPL of a checkpoint on val / test |
 | `sample.py` | Generates text from a checkpoint (requires sentencepiece + `sp_bpe_48k.model`) |
 | `fetch_shards.py` | Fetches shards from the coordinator API (`GET /api/shards/{name}`) and verifies their sha256 |
+| `explore.py` / `explore.html` | Next-token explorer: serves top-k candidates with probabilities for any prompt (`serve`, open in a browser) or writes a static candidate tree (`export`) |
 
 ## Setup (RTX 3060 machine)
 

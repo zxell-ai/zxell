@@ -14,6 +14,7 @@
 | `eval.py` | チェックポイントの val / test 言語別 PPL |
 | `sample.py` | チェックポイントから文章生成(要 sentencepiece + `sp_bpe_48k.model`) |
 | `fetch_shards.py` | コーディネータ API(`GET /api/shards/{name}`)からシャードを取得・sha256 照合 |
+| `explore.py` / `explore.html` | 次トークン探索: 任意の出だしに対する上位 k 候補と確率を配信(`serve`、ブラウザで木を表示)/ 静的な候補木の書き出し(`export`) |
 
 ## セットアップ(RTX 3060 機)
 
